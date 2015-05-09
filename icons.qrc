@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="text">icon_text.png</file>
+        <file alias="ellipse">icon_ellipse.png</file>
+        <file alias="arrow">icon_arrow.png</file>
+        <file alias="cursor">icon_cursor.png</file>
+    </qresource>
+</RCC>
