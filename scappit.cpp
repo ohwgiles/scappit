@@ -377,7 +377,7 @@ Scappit::Scappit(QString filename) :
     a->setCheckable(true);
     actions->addAction(a);
 
-    a = bar->addAction(QIcon::fromTheme("gnome-screenshot"), "Take Screenshot");
+    a = bar->addAction(QIcon(":camera"), "Take Screenshot");
     connect(a, &QAction::triggered, [&]{
         capture();
     });

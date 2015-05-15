@@ -4,5 +4,6 @@
         <file alias="ellipse">icon_ellipse.png</file>
         <file alias="arrow">icon_arrow.png</file>
         <file alias="cursor">icon_cursor.png</file>
+        <file alias="camera">icon_camera.png</file>
     </qresource>
 </RCC>
