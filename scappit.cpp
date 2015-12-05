@@ -576,7 +576,9 @@ int main(int argc, char** argv) {
             w->show();
             nWindows++;
         } else {
-            fprintf(stderr, "Usage: %s [-c] [FILE]...", argv[0]);
+            fprintf(stderr, "Usage: scappit [-c] [FILE]...\n\n"
+                    "Screen capture and annotation tool\n"
+                    "  -c      Start in capture mode\n");
             return 1;
         }
     }
