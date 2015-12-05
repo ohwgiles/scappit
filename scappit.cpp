@@ -10,6 +10,7 @@
 #include <QGraphicsPathItem>
 #include <QMainWindow>
 #include <QStyleOptionGraphicsItem>
+#include <QColorDialog>
 #include <QTextCharFormat>
 #include <QTextCursor>
 #include <QAction>
@@ -63,9 +64,10 @@ protected:
 
 class Arrow : public SceneItem<QAbstractGraphicsShapeItem> {
 public:
-    Arrow(QGraphicsScene* scene, QPointF origin) :
+    Arrow(QGraphicsScene* scene, QPointF origin, QColor colour) :
     SceneItem<QAbstractGraphicsShapeItem>(scene),
-      line(origin,origin)
+      line(origin,origin),
+      colour(colour)
     {
         QPen p(QColor(255,255,255), 2);
         p.setJoinStyle(Qt::MiterJoin);
@@ -92,7 +94,7 @@ public:
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = 0) override {
         painter->setPen(pen());
         painter->drawPath(path());
-        painter->fillPath(path(), Qt::red);
+        painter->fillPath(path(), colour);
 
         paintRubberBand(painter, option);
     }
@@ -125,12 +127,14 @@ private:
     }
 
     QLineF line;
+    QColor colour;
 };
 
 class Ellipse : public SceneItem<QGraphicsEllipseItem> {
 public:
-    Ellipse(QGraphicsScene* scene, QPointF origin) :
-        SceneItem<QGraphicsEllipseItem>(scene)
+    Ellipse(QGraphicsScene* scene, QPointF origin, QColor colour) :
+        SceneItem<QGraphicsEllipseItem>(scene),
+        colour(colour)
     {
         setPen(QPen(Qt::white, 10));
         setRect(origin.x(),origin.y(),0,0);
@@ -149,22 +153,25 @@ public:
         p.addEllipse(rect());
         painter->setPen(pen());
         painter->drawPath(p);
-        painter->setPen(QPen(Qt::red, 8));
+        painter->setPen(QPen(colour, 8));
         painter->drawPath(p);
         paintRubberBand(painter, option);
     }
 
+private:
+    QColor colour;
 };
 
 class Text : public SceneItem<QGraphicsTextItem> {
 public:
-    Text(QGraphicsScene* scene, QPointF origin) :
-        SceneItem<QGraphicsTextItem>(scene)
+    Text(QGraphicsScene* scene, QPointF origin, QColor colour) :
+        SceneItem<QGraphicsTextItem>(scene),
+        colour(colour)
     {
         setPos(origin);
         QTextCharFormat fmt;
         fmt.setFont(QFont("sans", 24, 75));
-        fmt.setForeground(Qt::red);
+        fmt.setForeground(colour);
         fmt.setTextOutline(QPen(QColor(255,255,255), 1));
         QTextCursor c(document());
         c.setCharFormat(fmt);
@@ -183,7 +190,8 @@ public:
     void lostFocus() override {
         setTextInteractionFlags(Qt::TextEditorInteraction);
     }
-
+private:
+    QColor colour;
 };
 
 class Screencap : public SceneItem<QGraphicsPixmapItem,QPixmap> {
@@ -214,6 +222,7 @@ class Canvas : public QGraphicsView {
 public:
     Canvas(std::function<Action()> act, std::function<void()> dc, QWidget* parent = 0) :
         QGraphicsView(parent),
+        currentColour(Qt::red),
         currentItem(0),
         currentAction(act),
         doneCreate(dc)
@@ -224,13 +233,13 @@ public:
     void mousePressEvent(QMouseEvent* e) override {
         switch(currentAction()) {
         case ACTION_ARROW:
-            currentItem = new Arrow(scene(), mapToScene(e->pos()));
+            currentItem = new Arrow(scene(), mapToScene(e->pos()), currentColour);
             break;
         case ACTION_ELLIPSE:
-            currentItem = new Ellipse(scene(), mapToScene(e->pos()));
+            currentItem = new Ellipse(scene(), mapToScene(e->pos()), currentColour);
             break;
         case ACTION_TEXT:
-            currentItem = new Text(scene(), mapToScene(e->pos()));
+            currentItem = new Text(scene(), mapToScene(e->pos()), currentColour);
         default:
             return QGraphicsView::mousePressEvent(e);
             break;
@@ -260,10 +269,8 @@ public:
         else
             QGraphicsView::keyPressEvent(e);
     }
-//    QSize sizeHint() const override {
-//        return QSize(860,520);
-//    }
 
+    QColor currentColour;
 private:
     DragSizeable* currentItem;
     std::function<Action()> currentAction;
@@ -299,6 +306,10 @@ private:
     QRect clear;
 };
 
+class ColouredIcon : public QIcon {
+public:
+
+};
 
 class Scappit : public QMainWindow {
 public:
@@ -346,7 +357,7 @@ protected:
 
 private:
     QGraphicsScene* scene;
-    QGraphicsView* view;
+    Canvas* view;
     QActionGroup* actions;
     QAction* saveAction;
     QAction* saveAsAction;
@@ -401,8 +412,23 @@ Scappit::Scappit(QString filename) :
     a->setCheckable(true);
     actions->addAction(a);
 
+    auto colourPickerIcon = [](QColor c){
+        QPixmap square(18, 12);
+        square.fill(c);
+        return QIcon(square);
+    };
+
+    a = bar->addAction(colourPickerIcon(Qt::red), "Set Colour");
+    connect(a, &QAction::triggered, [&,a]{
+        QColor newColour = QColorDialog::getColor(view->currentColour);
+        if(newColour.isValid()) {
+            view->currentColour = newColour;
+            a->setIcon(colourPickerIcon(newColour));
+        }
+    });
+
     a = bar->addAction(QIcon(":camera"), "Take Screenshot");
-    connect(a, &QAction::triggered, [&]{
+    connect(a, &QAction::triggered, [this]{
         capture();
     });
 
@@ -411,14 +437,14 @@ Scappit::Scappit(QString filename) :
     bar->addWidget(empty);
 
     a = bar->addAction(QIcon::fromTheme("document-new"), "New File");
-    connect(a, &QAction::triggered, [&]{
+    connect(a, &QAction::triggered, []{
         QMainWindow* w = new Scappit(nullptr);
         w->setAttribute(Qt::WA_DeleteOnClose);
         w->show();
     });
 
     a = bar->addAction(QIcon::fromTheme("document-open"), "Open File");
-    connect(a, &QAction::triggered, [&]{
+    connect(a, &QAction::triggered, [this]{
         QString f = QFileDialog::getOpenFileName(this, "Open File",
                                                  QStandardPaths::writableLocation(QStandardPaths::DesktopLocation),
                                                  "Images (*.png *.xpm *.jpg)");
@@ -486,7 +512,6 @@ Scappit::Scappit(QString filename) :
         // non-intuitive
         setDirty(false);
     }
-
 
     view = new Canvas(
         [=]{ // callback to get current action
