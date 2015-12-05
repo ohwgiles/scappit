@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QFileDialog>
 #include <QStandardPaths>
+#include <QMessageBox>
 #include <QGraphicsPathItem>
 #include <QMainWindow>
 #include <QStyleOptionGraphicsItem>
@@ -308,6 +309,29 @@ protected:
     void mouseReleaseEvent(QMouseEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
+    void closeEvent(QCloseEvent * e) override {
+        if(dirty) {
+            QString question = filename.isEmpty()
+                    ? "The current file is not saved"
+                    : QString("The file '") + filename + "' is not saved";
+            QMessageBox::StandardButton response = QMessageBox::question(this,
+                 question, "Do you want to save it before closing?",
+                 QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, QMessageBox::Yes);
+            if(response == QMessageBox::Yes) {
+                saveAction->trigger();
+                if(!dirty) // save successful
+                    e->accept();
+                else
+                    e->ignore();
+            } else if(response == QMessageBox::No) {
+                e->accept();
+            } else { // response == QMessageBox::Cancel
+                e->ignore();
+            }
+        } else {
+            e->accept();
+        }
+    }
     void setDirty(bool v) {
         dirty = v;
         saveAction->setEnabled(dirty);
