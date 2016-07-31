@@ -1,4 +1,5 @@
 #include <functional>
+#include <cmath>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QToolBar>
