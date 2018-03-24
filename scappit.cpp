@@ -548,7 +548,7 @@ void Scappit::mousePressEvent(QMouseEvent* e) {
 
 void Scappit::mouseMoveEvent(QMouseEvent* e) {
     if(grabbing && e->buttons() & Qt::LeftButton) {
-        if(captureRegion.topLeft() == captureRegion.bottomRight()) {
+        if(QX11Info::isCompositingManagerRunning() && captureRegion.topLeft() == captureRegion.bottomRight()) {
             overlay.show();
         }
         captureRegion.setBottomRight(e->globalPos());
